@@ -300,11 +300,11 @@ async function playTransitionAndStart() {
         });
     }
     
-    // 播放过渡视频
+    // 播放过渡视频（有声）
     transitionVideoEl.src = transitionVideo;
-    transitionVideoEl.muted = true;
+    transitionVideoEl.muted = false;  // 有声音
     transitionVideoEl.load();
-    console.log('开始播放过渡视频');
+    console.log('开始播放过渡视频（有声）');
     
     // 播放视频的Promise
     const videoPromise = new Promise(resolve => {
