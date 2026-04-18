@@ -1,0 +1,448 @@
+// 游戏状态
+const game = {
+    playerHP: 200,      // 玩家血量（串串）
+    enemyHP: 200,       // AI血量（爸爸）
+    maxHP: 200,
+    playerDamage: 0,    // 玩家累计伤害
+    enemyDamage: 0,     // AI累计伤害
+    correctCount: 0,
+    wrongCount: 0,
+    totalQuestions: 16,
+    currentQuestion: 0,
+    questionTimer: null,
+    countdownTimer: null,
+    currentAnswer: 0,
+    currentDifficulty: '',  // easy, normal, hard
+    questionType: '',       // simple, medium, hard
+    timeLeft: 30,
+    selectCountdown: 30,    // 选择界面倒计时
+    selectTimer: null,
+    isPlaying: false,
+    consecutiveCorrect: 0,  // 连续答对计数
+    lastSpecial: 2,  // 上次必杀技：1=旋风连踹，2=臭屁王，初始为2让第一次用1
+    difficultyConfig: {
+        easy: { simple: 16, medium: 0, hard: 0 },
+        normal: { simple: 10, medium: 6, hard: 0 },
+        hard: { simple: 6, medium: 6, hard: 4 }
+    },
+    // 倒计时配置（各加10秒）
+    timeConfig: {
+        simple: 30,   // 原20秒 + 10秒
+        medium: 40,   // 原30秒 + 10秒
+        hard: 50      // 原40秒 + 10秒
+    }
+};
+
+// DOM元素
+const elements = {
+    introScreen: document.getElementById('intro-screen'),
+    introVideo: document.getElementById('intro-video'),
+    challengeScreen: document.getElementById('challenge-screen'),
+    gameContainer: document.getElementById('game-container'),
+    resultScreen: document.getElementById('result-screen'),
+    
+    // 答题区
+    questionProgress: document.getElementById('question-progress'),
+    questionType: document.getElementById('question-type'),
+    countdown: document.getElementById('countdown'),
+    question: document.getElementById('question'),
+    answerInput: document.getElementById('answer-input'),
+    submitBtn: document.getElementById('submit-btn'),
+    giveUpBtn: document.getElementById('giveup-btn'),
+    feedback: document.getElementById('feedback'),
+    
+    // 血条
+    playerHP: document.getElementById('player-hp'),
+    enemyHP: document.getElementById('enemy-hp'),
+    playerHPBar: document.getElementById('player-hp-bar'),
+    enemyHPBar: document.getElementById('enemy-hp-bar'),
+    
+    // 视频
+    gameVideo: document.getElementById('game-video'),
+    
+    // 结果
+    resultText: document.getElementById('result-text'),
+    resultStats: document.getElementById('result-stats'),
+    restartBtn: document.getElementById('restart-btn'),
+    
+    // 选择界面
+    selectCountdown: document.getElementById('select-countdown'),
+    difficultyBtns: document.querySelectorAll('.difficulty-btn')
+};
+
+// 开场动画 - 不允许点击跳过，必须播完
+window.addEventListener('load', () => {
+    elements.introVideo.play().catch(() => {
+        // 如果自动播放失败，等待用户点击
+        elements.introScreen.addEventListener('click', () => {
+            elements.introVideo.play().catch(() => {});
+        }, { once: true });
+    });
+    
+    // 必须等视频播完才显示选择界面
+    elements.introVideo.onended = () => {
+        elements.introScreen.classList.add('hidden');
+        elements.challengeScreen.classList.add('show');
+        startSelectCountdown();
+    };
+    
+    // 移除点击跳过功能
+    // 用户必须看完开场动画
+});
+
+// 选择界面倒计时
+function startSelectCountdown() {
+    game.selectCountdown = 30;
+    elements.selectCountdown.textContent = game.selectCountdown;
+    
+    game.selectTimer = setInterval(() => {
+        game.selectCountdown--;
+        elements.selectCountdown.textContent = game.selectCountdown;
+        
+        if (game.selectCountdown <= 5) {
+            elements.selectCountdown.classList.add('warning');
+        }
+        
+        if (game.selectCountdown <= 0) {
+            clearInterval(game.selectTimer);
+            showTimeout();
+        }
+    }, 1000);
+    
+    // 难度按钮事件
+    elements.difficultyBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            clearInterval(game.selectTimer);
+            game.currentDifficulty = btn.dataset.difficulty;
+            startGame();
+        });
+    });
+}
+
+// 超时提示
+function showTimeout() {
+    elements.challengeScreen.innerHTML = `
+        <div class="timeout-message">
+            <div class="timeout-icon">⏰</div>
+            <div class="timeout-text">时间到！游戏结束</div>
+            <button class="restart-btn" onclick="location.reload()">重新开始</button>
+        </div>
+    `;
+}
+
+// 开始游戏
+function startGame() {
+    elements.challengeScreen.classList.remove('show');
+    elements.gameContainer.classList.add('show');
+    
+    resetGame();
+    updateHP();
+    playVideo('idle_loop', true);
+    generateQuestion();
+}
+
+// 重置游戏状态
+function resetGame() {
+    game.playerHP = game.maxHP;
+    game.enemyHP = game.maxHP;
+    game.playerDamage = 0;
+    game.enemyDamage = 0;
+    game.correctCount = 0;
+    game.wrongCount = 0;
+    game.currentQuestion = 0;
+    game.consecutiveCorrect = 0;  // 重置连续答对计数
+    game.isPlaying = true;
+    
+    const config = game.difficultyConfig[game.currentDifficulty];
+    game.totalQuestions = config.simple + config.medium + config.hard;
+}
+
+// 更新血条显示
+function updateHP() {
+    const playerPercent = (game.playerHP / game.maxHP) * 100;
+    const enemyPercent = (game.enemyHP / game.maxHP) * 100;
+    
+    elements.playerHPBar.style.width = `${playerPercent}%`;
+    elements.enemyHPBar.style.width = `${enemyPercent}%`;
+    elements.playerHP.textContent = `${game.playerHP}/${game.maxHP}`;
+    elements.enemyHP.textContent = `${game.enemyHP}/${game.maxHP}`;
+}
+
+// 生成题目
+function generateQuestion() {
+    if (!game.isPlaying) return;
+    
+    game.currentQuestion++;
+    elements.questionProgress.textContent = `第 ${game.currentQuestion} / ${game.totalQuestions} 题`;
+    
+    if (game.currentQuestion > game.totalQuestions) {
+        endGame();
+        return;
+    }
+    
+    // 根据难度配置决定题目类型
+    const config = game.difficultyConfig[game.currentDifficulty];
+    
+    if (game.currentDifficulty === 'easy') {
+        game.questionType = 'simple';
+    } else if (game.currentDifficulty === 'normal') {
+        game.questionType = game.currentQuestion > 10 ? 'medium' : 'simple';
+    } else {
+        if (game.currentQuestion <= 6) game.questionType = 'simple';
+        else if (game.currentQuestion <= 12) game.questionType = 'medium';
+        else game.questionType = 'hard';
+    }
+    
+    let a, b, operator;
+    
+    if (game.questionType === 'hard') {
+        a = Math.floor(Math.random() * 300) + 200;  // 200-500
+        b = Math.floor(Math.random() * 300) + 200;
+        operator = Math.random() < 0.5 ? '+' : '-';
+        if (operator === '-' && b > a) [a, b] = [b, a];
+        game.timeLeft = game.timeConfig.hard;  // 50秒
+        elements.questionType.textContent = '🔥 高难题 (伤害10)';
+        elements.questionType.style.color = '#ff4444';
+    } else if (game.questionType === 'medium') {
+        a = Math.floor(Math.random() * 100) + 100;  // 100-200
+        b = Math.floor(Math.random() * 100) + 100;
+        operator = Math.random() < 0.5 ? '+' : '-';
+        if (operator === '-' && b > a) [a, b] = [b, a];
+        game.timeLeft = game.timeConfig.medium;  // 40秒
+        elements.questionType.textContent = '⚡ 中等题 (伤害10)';
+        elements.questionType.style.color = '#ff9933';
+    } else {
+        a = Math.floor(Math.random() * 90) + 10;  // 10-99
+        b = Math.floor(Math.random() * 90) + 10;
+        operator = Math.random() < 0.5 ? '+' : '-';
+        if (operator === '-' && b > a) [a, b] = [b, a];
+        game.timeLeft = game.timeConfig.simple;  // 30秒
+        elements.questionType.textContent = '✨ 简单题 (伤害5)';
+        elements.questionType.style.color = '#44cc44';
+    }
+    
+    game.currentAnswer = operator === '+' ? a + b : a - b;
+    elements.question.textContent = `${a} ${operator} ${b} = ?`;
+    elements.answerInput.value = '';
+    elements.answerInput.focus();
+    elements.feedback.textContent = '';
+    
+    startCountdown();
+}
+
+// 倒计时
+function startCountdown() {
+    clearInterval(game.countdownTimer);
+    elements.countdown.textContent = game.timeLeft;
+    elements.countdown.classList.remove('warning');
+    
+    game.countdownTimer = setInterval(() => {
+        game.timeLeft--;
+        elements.countdown.textContent = game.timeLeft;
+        
+        // 最后5秒音效提示
+        if (game.timeLeft <= 5 && game.timeLeft > 0) {
+            elements.countdown.classList.add('warning');
+            playBeep();
+        }
+        
+        if (game.timeLeft <= 0) {
+            clearInterval(game.countdownTimer);
+            handleTimeout();
+        }
+    }, 1000);
+}
+
+// 倒计时音效
+function playBeep() {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = 800;
+    oscillator.type = 'sine';
+    gainNode.gain.value = 0.1;
+    
+    oscillator.start();
+    setTimeout(() => oscillator.stop(), 100);
+}
+
+// 超时处理
+function handleTimeout() {
+    game.wrongCount++;
+    game.consecutiveCorrect = 0;  // 重置连续答对
+    showFeedback('wrong', '时间到！');
+    setTimeout(() => enemyAttack(), 500);
+}
+
+// 提交答案
+elements.submitBtn.addEventListener('click', checkAnswer);
+elements.answerInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') checkAnswer();
+});
+
+function checkAnswer() {
+    const userAnswer = parseInt(elements.answerInput.value);
+    if (isNaN(userAnswer)) return;
+    
+    clearInterval(game.countdownTimer);
+    
+    if (userAnswer === game.currentAnswer) {
+        game.correctCount++;
+        game.consecutiveCorrect++;  // 连续答对+1
+        showFeedback('correct', '太棒了！攻击成功！');
+        setTimeout(() => playerAttack(), 500);
+    } else {
+        game.wrongCount++;
+        game.consecutiveCorrect = 0;  // 重置连续答对
+        showFeedback('wrong', `哎呀！答错了...`);
+        setTimeout(() => enemyAttack(), 500);
+    }
+}
+
+// 放弃
+elements.giveUpBtn.addEventListener('click', () => {
+    clearInterval(game.countdownTimer);
+    game.wrongCount++;
+    game.consecutiveCorrect = 0;  // 重置连续答对
+    showFeedback('wrong', '没关系，继续加油！');
+    setTimeout(() => enemyAttack(), 500);
+});
+
+// 显示反馈
+function showFeedback(type, text) {
+    elements.feedback.textContent = text;
+    elements.feedback.className = type === 'correct' ? 'correct' : 'wrong';
+}
+
+// 玩家攻击（串串攻击爸爸）
+function playerAttack() {
+    let damage, videoName, isSpecial = false;
+    
+    // 判断是否触发必杀技
+    // 规则：简单题连续答对3道，或中等/高难题答对
+    if (game.questionType !== 'simple') {
+        // 中等/高难题直接触发必杀技（轮换）
+        damage = 10;
+        videoName = game.lastSpecial === 1 ? 'cc_special2' : 'cc_special1';
+        game.lastSpecial = videoName === 'cc_special1' ? 1 : 2;
+        isSpecial = true;
+    } else if (game.consecutiveCorrect >= 3) {
+        // 简单题连续答对3道触发必杀技（轮换）
+        damage = 10;
+        videoName = game.lastSpecial === 1 ? 'cc_special2' : 'cc_special1';
+        game.lastSpecial = videoName === 'cc_special1' ? 1 : 2;
+        isSpecial = true;
+        game.consecutiveCorrect = 0;  // 触发后重置计数
+    } else {
+        // 普通攻击
+        damage = 5;
+        videoName = 'cc_normal';
+    }
+    
+    game.enemyHP = Math.max(0, game.enemyHP - damage);
+    game.playerDamage += damage;
+    updateHP();
+    
+    playVideo(videoName, false);
+    
+    // 视频时长
+    const videoDuration = isSpecial ? 8500 : 4500;
+    
+    setTimeout(() => {
+        if (game.currentQuestion < game.totalQuestions) {
+            playVideo('idle_loop', true);
+            setTimeout(generateQuestion, 1000);
+        } else {
+            endGame();
+        }
+    }, videoDuration);
+}
+
+// AI攻击（爸爸攻击串串）
+function enemyAttack() {
+    let damage, videoName, isSpecial = false;
+    
+    // 判断是否触发必杀技
+    if (game.questionType !== 'simple') {
+        damage = 10;
+        videoName = Math.random() < 0.5 ? 'rr_special1' : 'rr_special2';
+        isSpecial = true;
+    } else {
+        damage = 5;
+        videoName = 'rr_normal';
+    }
+    
+    game.playerHP = Math.max(0, game.playerHP - damage);
+    game.enemyDamage += damage;
+    updateHP();
+    
+    playVideo(videoName, false);
+    
+    const videoDuration = isSpecial ? 8500 : 4500;
+    
+    setTimeout(() => {
+        if (game.currentQuestion < game.totalQuestions) {
+            playVideo('idle_loop', true);
+            setTimeout(generateQuestion, 1000);
+        } else {
+            endGame();
+        }
+    }, videoDuration);
+}
+
+// 播放视频
+function playVideo(name, loop) {
+    elements.gameVideo.src = `videos/${name}.mp4`;
+    elements.gameVideo.loop = loop;
+    elements.gameVideo.muted = false;
+    elements.gameVideo.load();
+    elements.gameVideo.play().catch(() => {
+        elements.gameVideo.muted = true;
+        elements.gameVideo.play().catch(() => {});
+    });
+}
+
+// 结束游戏
+function endGame() {
+    game.isPlaying = false;
+    clearInterval(game.countdownTimer);
+    
+    // 判断胜负
+    let result, videoName;
+    if (game.playerDamage > game.enemyDamage) {
+        result = '串串胜利！🎉';
+        videoName = 'cc_win';
+        elements.resultText.style.color = '#44cc44';
+    } else if (game.playerDamage < game.enemyDamage) {
+        result = '爸爸胜利！';
+        videoName = 'rr_win';
+        elements.resultText.style.color = '#ff4444';
+    } else {
+        result = '平局！🤝';
+        videoName = 'draw';
+        elements.resultText.style.color = '#ffcc00';
+    }
+    
+    elements.resultText.textContent = result;
+    elements.resultStats.innerHTML = `
+        答对: ${game.correctCount} 题<br>
+        答错: ${game.wrongCount} 题<br><br>
+        你造成的伤害: ${game.playerDamage}<br>
+        爸爸造成的伤害: ${game.enemyDamage}
+    `;
+    
+    playVideo(videoName, false);
+    
+    setTimeout(() => {
+        elements.resultScreen.classList.add('show');
+    }, 6000);
+}
+
+// 重新开始
+elements.restartBtn.addEventListener('click', () => {
+    location.reload();
+});
