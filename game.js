@@ -619,13 +619,25 @@ function playVideo(name, loop) {
 // 播放视频并等待结束
 function playVideoAndWait(name) {
     return new Promise((resolve) => {
+        console.log(`准备播放视频: ${name}`);
         let resolved = false;
+        const startTime = Date.now();
         
-        const doResolve = () => {
+        const doResolve = (reason) => {
             if (resolved) return;
             resolved = true;
+            console.log(`视频结束: ${name}, 原因: ${reason}, 耗时: ${Date.now() - startTime}ms`);
+            // 清理事件
+            elements.gameVideo.onended = null;
+            elements.gameVideo.onerror = null;
+            elements.gameVideo.onloadeddata = null;
+            elements.gameVideo.onplay = null;
             resolve();
         };
+        
+        // 视频结束
+        elements.gameVideo.onended = () => doResolve('ended');
+        elements.gameVideo.onerror = (e) => doResolve('error');
         
         // 设置视频源
         elements.gameVideo.src = `videos/${name}.mp4`;
@@ -633,22 +645,35 @@ function playVideoAndWait(name) {
         elements.gameVideo.muted = false;
         elements.gameVideo.currentTime = 0;
         
-        // 视频结束或出错
-        elements.gameVideo.onended = doResolve;
-        elements.gameVideo.onerror = doResolve;
-        
-        // 数据加载后播放
-        elements.gameVideo.onloadeddata = () => {
-            elements.gameVideo.play().catch(() => {
+        // 如果视频已经加载好（从缓存），直接播放
+        if (elements.gameVideo.readyState >= 2) {
+            console.log(`视频已缓存: ${name}`);
+            elements.gameVideo.play().then(() => {
+                console.log(`视频开始播放: ${name}`);
+            }).catch((e) => {
+                console.log(`播放失败，静音重试: ${e}`);
                 elements.gameVideo.muted = true;
-                elements.gameVideo.play().catch(doResolve);
+                elements.gameVideo.play().catch(() => doResolve('play failed'));
             });
-        };
+        } else {
+            // 等待数据加载
+            elements.gameVideo.onloadeddata = () => {
+                console.log(`视频数据加载完成: ${name}`);
+                elements.gameVideo.play().then(() => {
+                    console.log(`视频开始播放: ${name}`);
+                }).catch((e) => {
+                    console.log(`播放失败，静音重试: ${e}`);
+                    elements.gameVideo.muted = true;
+                    elements.gameVideo.play().catch(() => doResolve('play failed'));
+                });
+            };
+        }
         
         elements.gameVideo.load();
         
         // 超时保护
-        setTimeout(doResolve, 15000);
+        const timeout = name.includes('special') ? 12000 : 8000;
+        setTimeout(() => doResolve('timeout'), timeout);
     });
 }
 
