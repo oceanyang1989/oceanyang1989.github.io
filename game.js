@@ -201,18 +201,18 @@ function startSelectCountdown() {
 async function playTransitionAndStart() {
     elements.challengeScreen.classList.remove('show');
     
-    // 创建过渡界面：视频+底部加载条
+    // 创建过渡界面：进度条在上方
     const transitionDiv = document.createElement('div');
     transitionDiv.id = 'transition-screen';
-    transitionDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:350;display:flex;flex-direction:column;';
+    transitionDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:350;';
     transitionDiv.innerHTML = `
-        <video id="transition-video" style="flex:1;width:100%;object-fit:cover;" playsinline muted></video>
-        <div style="padding:10px;background:rgba(0,0,0,0.9);">
-            <div style="width:100%;height:6px;background:rgba(255,255,255,0.2);border-radius:3px;overflow:hidden;">
+        <div style="position:absolute;top:10px;left:0;right:0;padding:10px;background:rgba(0,0,0,0.7);z-index:10;">
+            <div style="width:80%;max-width:300px;margin:0 auto;height:8px;background:rgba(255,255,255,0.2);border-radius:4px;overflow:hidden;">
                 <div id="transition-loading-bar" style="height:100%;background:#ffd700;width:0%;transition:width 0.3s;"></div>
             </div>
-            <div id="transition-loading-text" style="text-align:center;font-size:11px;color:#aaa;margin-top:4px;">加载中... 0%</div>
+            <div id="transition-loading-text" style="text-align:center;font-size:12px;color:#aaa;margin-top:5px;">加载中... 0%</div>
         </div>
+        <video id="transition-video" style="width:100%;height:100%;object-fit:cover;" playsinline muted></video>
     `;
     document.body.appendChild(transitionDiv);
     
@@ -227,34 +227,33 @@ async function playTransitionAndStart() {
         loadingText.textContent = `加载中... ${percent}%`;
     };
     
-    // 播放过渡视频
-    let videoPlayed = false;
-    const startTransitionVideo = () => {
-        if (videoPlayed) return;
-        videoPlayed = true;
-        transitionVideo.play().catch(() => {
-            // 如果播放失败，静音后再试
-            transitionVideo.muted = true;
-            transitionVideo.play().catch(() => {});
-        });
-    };
-    
+    // 设置视频源
     transitionVideo.src = 'videos/transition.mp4';
-    transitionVideo.load();
-    
-    // 视频可以播放时开始播放
-    transitionVideo.oncanplaythrough = startTransitionVideo;
+    transitionVideo.muted = true;  // 静音确保能自动播放
     
     // 等待视频播放完成
     const videoPromise = new Promise(resolve => {
-        transitionVideo.onended = () => {
-            transitionVideo.pause();
+        let resolved = false;
+        
+        const doResolve = () => {
+            if (resolved) return;
+            resolved = true;
+            transitionVideo.onended = null;
+            transitionVideo.onerror = null;
+            transitionVideo.oncanplaythrough = null;
             resolve();
         };
-        transitionVideo.onerror = () => resolve();
         
-        // 最多等10秒
-        setTimeout(resolve, 10000);
+        transitionVideo.onended = doResolve;
+        transitionVideo.onerror = doResolve;
+        
+        // 视频可以播放时开始播放
+        transitionVideo.oncanplaythrough = () => {
+            transitionVideo.play().catch(doResolve);
+        };
+        
+        // 最多等8秒
+        setTimeout(doResolve, 8000);
     });
     
     // 同时等待预加载
@@ -265,7 +264,7 @@ async function playTransitionAndStart() {
                 clearInterval(checkLoaded);
                 loadingBar.style.width = '100%';
                 loadingText.textContent = '加载完成！';
-                setTimeout(resolve, 500);
+                setTimeout(resolve, 300);
             }
         }, 200);
     });
