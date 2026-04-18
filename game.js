@@ -206,12 +206,12 @@ async function playTransitionAndStart() {
     transitionDiv.id = 'transition-screen';
     transitionDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:350;display:flex;flex-direction:column;';
     transitionDiv.innerHTML = `
-        <video id="transition-video" style="flex:1;width:100%;object-fit:cover;" playsinline></video>
-        <div style="padding:15px;background:rgba(0,0,0,0.8);">
-            <div style="width:100%;height:8px;background:rgba(255,255,255,0.2);border-radius:4px;overflow:hidden;">
+        <video id="transition-video" style="flex:1;width:100%;object-fit:cover;" playsinline muted></video>
+        <div style="padding:10px;background:rgba(0,0,0,0.9);">
+            <div style="width:100%;height:6px;background:rgba(255,255,255,0.2);border-radius:3px;overflow:hidden;">
                 <div id="transition-loading-bar" style="height:100%;background:#ffd700;width:0%;transition:width 0.3s;"></div>
             </div>
-            <div id="transition-loading-text" style="text-align:center;font-size:12px;color:#aaa;margin-top:5px;">加载中... 0%</div>
+            <div id="transition-loading-text" style="text-align:center;font-size:11px;color:#aaa;margin-top:4px;">加载中... 0%</div>
         </div>
     `;
     document.body.appendChild(transitionDiv);
@@ -227,27 +227,34 @@ async function playTransitionAndStart() {
         loadingText.textContent = `加载中... ${percent}%`;
     };
     
+    // 播放过渡视频
+    let videoPlayed = false;
+    const startTransitionVideo = () => {
+        if (videoPlayed) return;
+        videoPlayed = true;
+        transitionVideo.play().catch(() => {
+            // 如果播放失败，静音后再试
+            transitionVideo.muted = true;
+            transitionVideo.play().catch(() => {});
+        });
+    };
+    
     transitionVideo.src = 'videos/transition.mp4';
     transitionVideo.load();
     
-    // 播放过渡动画
-    let videoEnded = false;
+    // 视频可以播放时开始播放
+    transitionVideo.oncanplaythrough = startTransitionVideo;
+    
+    // 等待视频播放完成
     const videoPromise = new Promise(resolve => {
         transitionVideo.onended = () => {
-            videoEnded = true;
-            // 视频播完后暂停在最后一帧
             transitionVideo.pause();
             resolve();
         };
         transitionVideo.onerror = () => resolve();
-        transitionVideo.play().catch(() => resolve());
         
         // 最多等10秒
-        setTimeout(() => {
-            videoEnded = true;
-            transitionVideo.pause();
-            resolve();
-        }, 10000);
+        setTimeout(resolve, 10000);
     });
     
     // 同时等待预加载
@@ -629,7 +636,7 @@ function playVideoAndWait(name) {
 }
 
 // 结束游戏
-function endGame() {
+async function endGame() {
     game.isPlaying = false;
     clearInterval(game.countdownTimer);
     
@@ -657,11 +664,11 @@ function endGame() {
         爸爸造成的伤害: ${game.enemyDamage}
     `;
     
-    playVideo(videoName, false);
+    // 播放结算视频并等待结束
+    await playVideoAndWait(videoName);
     
-    setTimeout(() => {
-        elements.resultScreen.classList.add('show');
-    }, 6000);
+    // 显示结果界面
+    elements.resultScreen.classList.add('show');
 }
 
 // 重新开始
