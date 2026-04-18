@@ -81,6 +81,7 @@ let currentInput = '';
 
 // 所有视频列表
 const videoList = [
+    'videos/transition.mp4',
     'videos/idle_loop.mp4',
     'videos/cc_normal.mp4',
     'videos/rr_normal.mp4',
@@ -144,6 +145,11 @@ function checkOrientation() {
     }
 }
 
+// 用户点击继续，关闭横屏提示
+function hideRotateHint() {
+    elements.rotateHint.classList.remove('show');
+}
+
 // 开场 - 直接显示选择界面
 window.addEventListener('load', async () => {
     // 检测屏幕方向
@@ -192,31 +198,39 @@ function startSelectCountdown() {
 // 播放过渡动画后开始游戏
 async function playTransitionAndStart() {
     elements.challengeScreen.classList.remove('show');
-    elements.introScreen.classList.remove('hidden');
     
-    // 播放开场动画
-    elements.introVideo.play().catch(() => {});
+    // 显示过渡视频容器
+    const transitionDiv = document.createElement('div');
+    transitionDiv.id = 'transition-screen';
+    transitionDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:350;';
+    transitionDiv.innerHTML = '<video id="transition-video" style="width:100%;height:100%;object-fit:cover;" playsinline></video>';
+    document.body.appendChild(transitionDiv);
     
-    // 等待视频播放完成或预加载完成（取较长时间）
+    const transitionVideo = document.getElementById('transition-video');
+    transitionVideo.src = 'videos/transition.mp4';
+    transitionVideo.load();
+    
+    // 播放过渡动画
     await new Promise(resolve => {
         const onEnded = () => {
-            elements.introVideo.removeEventListener('ended', onEnded);
+            transitionVideo.removeEventListener('ended', onEnded);
             resolve();
         };
-        elements.introVideo.addEventListener('ended', onEnded);
+        transitionVideo.addEventListener('ended', onEnded);
+        transitionVideo.play().catch(() => resolve());
         
-        // 如果视频还没加载，最多等8秒
+        // 最多等8秒
         setTimeout(resolve, 8000);
     });
     
+    // 移除过渡视频
+    transitionDiv.remove();
+    
     // 如果预加载还没完成，显示加载界面
     if (loadedCount < videoList.length) {
-        elements.introScreen.classList.add('hidden');
         elements.loadingScreen.classList.add('show');
         await preloadVideos();
         elements.loadingScreen.classList.remove('show');
-    } else {
-        elements.introScreen.classList.add('hidden');
     }
     
     // 开始游戏
