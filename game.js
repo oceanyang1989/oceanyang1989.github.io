@@ -274,7 +274,9 @@ async function playTransitionAndStart() {
     // 播放过渡视频
     transitionVideoEl.src = transitionVideo;
     transitionVideoEl.muted = true;
+    transitionVideoEl.load();
     
+    // 播放视频的Promise
     const videoPromise = new Promise(resolve => {
         let resolved = false;
         const doResolve = () => {
@@ -285,11 +287,20 @@ async function playTransitionAndStart() {
         
         transitionVideoEl.onended = doResolve;
         transitionVideoEl.onerror = doResolve;
-        transitionVideoEl.oncanplaythrough = () => {
-            transitionVideoEl.play().catch(doResolve);
-        };
         
-        setTimeout(doResolve, 8000);
+        // 检查是否已经可以播放
+        if (transitionVideoEl.readyState >= 3) {
+            // 已经有足够数据，直接播放
+            transitionVideoEl.play().catch(doResolve);
+        } else {
+            // 等待数据加载
+            transitionVideoEl.oncanplay = () => {
+                transitionVideoEl.play().catch(doResolve);
+            };
+        }
+        
+        // 最多等10秒
+        setTimeout(doResolve, 10000);
     });
     
     // 更新加载进度
