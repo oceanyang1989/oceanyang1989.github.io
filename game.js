@@ -720,8 +720,15 @@ function playVideoAndWait(name) {
             };
         }
         
-        // 超时保护（必杀技最长12.2秒，给15秒；普通攻击5秒左右，给8秒）
-        const timeout = name.includes('special') ? 15000 : 10000;
+        // 超时保护（必杀技12秒，结算视频6秒，普通攻击5秒）
+        let timeout;
+        if (name.includes('special')) {
+            timeout = 15000;
+        } else if (name.includes('win') || name === 'draw') {
+            timeout = 10000;  // 结算视频
+        } else {
+            timeout = 10000;  // 普通攻击
+        }
         setTimeout(() => doResolve('timeout'), timeout);
     });
 }
@@ -747,6 +754,13 @@ async function endGame() {
         elements.resultText.style.color = '#ffcc00';
     }
     
+    console.log(`游戏结束: ${result}, 播放视频: ${videoName}`);
+    
+    // 播放结算视频并等待结束（给更长超时）
+    await playVideoAndWait(videoName);
+    console.log(`结算视频播放完成: ${videoName}`);
+    
+    // 显示结果界面
     elements.resultText.textContent = result;
     elements.resultStats.innerHTML = `
         答对: ${game.correctCount} 题<br>
@@ -754,11 +768,6 @@ async function endGame() {
         你造成的伤害: ${game.playerDamage}<br>
         爸爸造成的伤害: ${game.enemyDamage}
     `;
-    
-    // 播放结算视频并等待结束
-    await playVideoAndWait(videoName);
-    
-    // 显示结果界面
     elements.resultScreen.classList.add('show');
 }
 
