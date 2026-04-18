@@ -19,7 +19,9 @@ const game = {
     selectTimer: null,
     isPlaying: false,
     consecutiveCorrect: 0,  // 连续答对计数
-    lastSpecial: 2,  // 上次必杀技：1=旋风连踹，2=臭屁王，初始为2让第一次用1
+    consecutiveWrong: 0,    // 连续答错计数
+    lastPlayerSpecial: 2,   // 玩家上次必杀技：1=旋风连踹，2=臭屁王
+    lastEnemySpecial: 2,    // AI上次必杀技：1=拉粑粑，2=召唤茹姐
     difficultyConfig: {
         easy: { simple: 16, medium: 0, hard: 0 },
         normal: { simple: 10, medium: 6, hard: 0 },
@@ -298,10 +300,12 @@ function resetGame() {
     game.correctCount = 0;
     game.wrongCount = 0;
     game.currentQuestion = 0;
-    game.consecutiveCorrect = 0;  // 重置连续答对计数
-    game.lastSpecial = 2;  // 重置必杀技轮换
+    game.consecutiveCorrect = 0;
+    game.consecutiveWrong = 0;
+    game.lastPlayerSpecial = 2;
+    game.lastEnemySpecial = 2;
     game.isPlaying = true;
-    currentInput = '';  // 重置输入
+    currentInput = '';
     
     const config = game.difficultyConfig[game.currentDifficulty];
     game.totalQuestions = config.simple + config.medium + config.hard;
@@ -424,7 +428,8 @@ function playBeep() {
 // 超时处理
 function handleTimeout() {
     game.wrongCount++;
-    game.consecutiveCorrect = 0;  // 重置连续答对
+    game.consecutiveWrong++;
+    game.consecutiveCorrect = 0;
     showFeedback('wrong', '时间到！');
     setTimeout(() => enemyAttack(), 500);
 }
@@ -464,11 +469,13 @@ function checkAnswer() {
     
     if (userAnswer === game.currentAnswer) {
         game.correctCount++;
-        game.consecutiveCorrect++;  // 连续答对+1
+        game.consecutiveCorrect++;
+        game.consecutiveWrong = 0;  // 重置连续答错
         showFeedback('correct', '太棒了！攻击成功！');
         setTimeout(() => playerAttack(), 500);
     } else {
         game.wrongCount++;
+        game.consecutiveWrong++;
         game.consecutiveCorrect = 0;  // 重置连续答对
         showFeedback('wrong', `哎呀！答错了...`);
         setTimeout(() => enemyAttack(), 500);
@@ -479,7 +486,8 @@ function checkAnswer() {
 elements.giveUpBtn.addEventListener('click', () => {
     clearInterval(game.countdownTimer);
     game.wrongCount++;
-    game.consecutiveCorrect = 0;  // 重置连续答对
+    game.consecutiveWrong++;
+    game.consecutiveCorrect = 0;
     showFeedback('wrong', '没关系，继续加油！');
     setTimeout(() => enemyAttack(), 500);
 });
@@ -494,21 +502,18 @@ function showFeedback(type, text) {
 async function playerAttack() {
     let damage, videoName, isSpecial = false;
     
-    // 判断是否触发必杀技
-    // 规则：简单题连续答对3道，或中等/高难题答对
-    if (game.questionType !== 'simple') {
-        // 中等/高难题直接触发必杀技（轮换）
+    // 连续答对3道触发必杀技
+    if (game.consecutiveCorrect >= 3) {
         damage = 10;
-        videoName = game.lastSpecial === 1 ? 'cc_special2' : 'cc_special1';
-        game.lastSpecial = videoName === 'cc_special1' ? 1 : 2;
+        // 轮换：上次是旋风连踹(1)就用臭屁王(2)，上次是臭屁王(2)就用旋风连踹(1)
+        if (game.lastPlayerSpecial === 1) {
+            videoName = 'cc_special2';  // 臭屁王
+            game.lastPlayerSpecial = 2;
+        } else {
+            videoName = 'cc_special1';  // 旋风连踹
+            game.lastPlayerSpecial = 1;
+        }
         isSpecial = true;
-    } else if (game.consecutiveCorrect >= 3) {
-        // 简单题连续答对3道触发必杀技（轮换）
-        damage = 10;
-        videoName = game.lastSpecial === 1 ? 'cc_special2' : 'cc_special1';
-        game.lastSpecial = videoName === 'cc_special1' ? 1 : 2;
-        isSpecial = true;
-        game.consecutiveCorrect = 0;  // 触发后重置计数
     } else {
         // 普通攻击
         damage = 5;
@@ -534,11 +539,19 @@ async function playerAttack() {
 async function enemyAttack() {
     let damage, videoName;
     
-    // 判断是否触发必杀技
-    if (game.questionType !== 'simple') {
+    // 串串连续答错/放弃3道触发必杀技
+    if (game.consecutiveWrong >= 3) {
         damage = 10;
-        videoName = Math.random() < 0.5 ? 'rr_special1' : 'rr_special2';
+        // 轮换：上次是拉粑粑(1)就用召唤茹姐(2)，上次是召唤茹姐(2)就用拉粑粑(1)
+        if (game.lastEnemySpecial === 1) {
+            videoName = 'rr_special2';  // 召唤茹姐
+            game.lastEnemySpecial = 2;
+        } else {
+            videoName = 'rr_special1';  // 拉粑粑
+            game.lastEnemySpecial = 1;
+        }
     } else {
+        // 普通攻击
         damage = 5;
         videoName = 'rr_normal';
     }
