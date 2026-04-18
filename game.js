@@ -81,9 +81,9 @@ const elements = {
 // 当前输入的答案
 let currentInput = '';
 
-// 所有视频列表
-const videoList = [
-    'videos/transition.mp4',
+// 所有视频列表（按优先级排序）
+const transitionVideo = 'videos/transition.mp4';
+const gameVideos = [
     'videos/idle_loop.mp4',
     'videos/cc_normal.mp4',
     'videos/rr_normal.mp4',
@@ -95,34 +95,61 @@ const videoList = [
     'videos/rr_win.mp4',
     'videos/draw.mp4'
 ];
+const videoList = [transitionVideo, ...gameVideos];
 
-// 预加载视频
+// 预加载状态
 let loadedCount = 0;
+let transitionLoaded = false;
 let preloadResolve = null;
 
-function preloadVideos() {
+// 预加载过渡视频（优先）
+function preloadTransitionVideo() {
+    return new Promise((resolve) => {
+        const video = document.createElement('video');
+        video.preload = 'auto';
+        video.src = transitionVideo;
+        video.load();
+        
+        video.oncanplaythrough = () => {
+            transitionLoaded = true;
+            loadedCount++;
+            console.log('过渡视频加载完成');
+            resolve();
+        };
+        
+        video.onerror = () => {
+            transitionLoaded = true;
+            loadedCount++;
+            resolve();
+        };
+    });
+}
+
+// 预加载游戏视频（后台）
+function preloadGameVideos() {
     return new Promise((resolve) => {
         preloadResolve = resolve;
+        let gameLoadedCount = 0;
         
-        videoList.forEach(src => {
+        gameVideos.forEach(src => {
             const video = document.createElement('video');
             video.preload = 'auto';
             video.src = src;
             video.load();
             
             video.oncanplaythrough = () => {
+                gameLoadedCount++;
                 loadedCount++;
-                updateLoadingProgress();
-                if (loadedCount >= videoList.length && preloadResolve) {
+                if (gameLoadedCount >= gameVideos.length && preloadResolve) {
                     preloadResolve();
                     preloadResolve = null;
                 }
             };
             
             video.onerror = () => {
+                gameLoadedCount++;
                 loadedCount++;
-                updateLoadingProgress();
-                if (loadedCount >= videoList.length && preloadResolve) {
+                if (gameLoadedCount >= gameVideos.length && preloadResolve) {
                     preloadResolve();
                     preloadResolve = null;
                 }
@@ -152,15 +179,15 @@ function hideRotateHint() {
     elements.rotateHint.classList.remove('show');
 }
 
-// 开场 - 直接显示选择界面
+// 开场 - 直接显示选择界面，后台开始加载
 window.addEventListener('load', async () => {
     // 检测屏幕方向
     checkOrientation();
     window.addEventListener('resize', checkOrientation);
     window.addEventListener('orientationchange', checkOrientation);
     
-    // 后台开始预加载视频
-    preloadVideos();
+    // 后台开始加载过渡视频（优先）
+    preloadTransitionVideo();
     
     // 直接显示选择界面
     elements.introScreen.classList.add('hidden');
@@ -579,58 +606,49 @@ async function enemyAttack() {
 
 // 播放视频
 function playVideo(name, loop) {
-    // 先停止当前视频
-    elements.gameVideo.pause();
     elements.gameVideo.src = `videos/${name}.mp4`;
     elements.gameVideo.loop = loop;
     elements.gameVideo.muted = false;
     elements.gameVideo.load();
-    
-    // 等待可以播放后再播放
-    elements.gameVideo.oncanplaythrough = () => {
-        elements.gameVideo.play().catch(() => {
-            elements.gameVideo.muted = true;
-            elements.gameVideo.play().catch(() => {});
-        });
-    };
+    elements.gameVideo.play().catch(() => {
+        elements.gameVideo.muted = true;
+        elements.gameVideo.play().catch(() => {});
+    });
 }
 
 // 播放视频并等待结束
 function playVideoAndWait(name) {
     return new Promise((resolve) => {
-        // 先停止当前视频
-        elements.gameVideo.pause();
-        
         let resolved = false;
         
         const doResolve = () => {
             if (resolved) return;
             resolved = true;
-            elements.gameVideo.removeEventListener('ended', doResolve);
-            elements.gameVideo.removeEventListener('error', doResolve);
-            elements.gameVideo.oncanplaythrough = null;
             resolve();
         };
         
-        elements.gameVideo.addEventListener('ended', doResolve);
-        elements.gameVideo.addEventListener('error', doResolve);
-        
+        // 设置视频源
         elements.gameVideo.src = `videos/${name}.mp4`;
         elements.gameVideo.loop = false;
         elements.gameVideo.muted = false;
-        elements.gameVideo.load();
+        elements.gameVideo.currentTime = 0;
         
-        // 等待视频可以播放后再播放
-        elements.gameVideo.oncanplaythrough = () => {
+        // 视频结束或出错
+        elements.gameVideo.onended = doResolve;
+        elements.gameVideo.onerror = doResolve;
+        
+        // 数据加载后播放
+        elements.gameVideo.onloadeddata = () => {
             elements.gameVideo.play().catch(() => {
-                // 静音后再试
                 elements.gameVideo.muted = true;
-                elements.gameVideo.play().catch(() => doResolve());
+                elements.gameVideo.play().catch(doResolve);
             });
         };
         
-        // 超时保护（视频最长等20秒）
-        setTimeout(doResolve, 20000);
+        elements.gameVideo.load();
+        
+        // 超时保护
+        setTimeout(doResolve, 15000);
     });
 }
 
