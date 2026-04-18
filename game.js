@@ -509,6 +509,8 @@ async function enemyAttack() {
 
 // 播放视频
 function playVideo(name, loop) {
+    // 先停止当前视频
+    elements.gameVideo.pause();
     elements.gameVideo.src = `videos/${name}.mp4`;
     elements.gameVideo.loop = loop;
     elements.gameVideo.muted = false;
@@ -522,18 +524,37 @@ function playVideo(name, loop) {
 // 播放视频并等待结束
 function playVideoAndWait(name) {
     return new Promise((resolve) => {
-        const onEnded = () => {
-            elements.gameVideo.removeEventListener('ended', onEnded);
+        // 先停止当前视频，移除所有旧的事件监听
+        elements.gameVideo.pause();
+        
+        let resolved = false;
+        
+        const doResolve = () => {
+            if (resolved) return;
+            resolved = true;
+            elements.gameVideo.removeEventListener('ended', doResolve);
+            elements.gameVideo.removeEventListener('error', doResolve);
             resolve();
         };
-        elements.gameVideo.addEventListener('ended', onEnded);
-        playVideo(name, false);
         
-        // 超时保护（如果视频加载失败，最多等10秒）
-        setTimeout(() => {
-            elements.gameVideo.removeEventListener('ended', onEnded);
-            resolve();
-        }, 10000);
+        elements.gameVideo.addEventListener('ended', doResolve);
+        elements.gameVideo.addEventListener('error', doResolve);
+        
+        elements.gameVideo.src = `videos/${name}.mp4`;
+        elements.gameVideo.loop = false;
+        elements.gameVideo.muted = false;
+        elements.gameVideo.load();
+        
+        // 确保视频可以播放
+        elements.gameVideo.oncanplay = () => {
+            elements.gameVideo.play().catch(() => {
+                elements.gameVideo.muted = true;
+                elements.gameVideo.play().catch(() => doResolve());
+            });
+        };
+        
+        // 超时保护（视频最长等15秒）
+        setTimeout(doResolve, 15000);
     });
 }
 
