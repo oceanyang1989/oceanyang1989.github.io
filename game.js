@@ -682,10 +682,10 @@ function playVideoAndWait(name) {
             doResolve('error');
         };
         
-        // 设置视频源
+        // 设置视频源（默认静音，确保能播放）
         elements.gameVideo.src = `videos/${name}.mp4`;
         elements.gameVideo.loop = false;
-        elements.gameVideo.muted = false;
+        elements.gameVideo.muted = true;  // 静音播放，避免被浏览器阻止
         elements.gameVideo.currentTime = 0;
         elements.gameVideo.load();
         
@@ -695,14 +695,8 @@ function playVideoAndWait(name) {
             elements.gameVideo.play().then(() => {
                 console.log(`视频开始播放: ${name}`);
             }).catch((e) => {
-                console.log(`播放失败(${e.name}): ${e.message}，静音重试`);
-                elements.gameVideo.muted = true;
-                elements.gameVideo.play().then(() => {
-                    console.log(`静音播放成功: ${name}`);
-                }).catch((e2) => {
-                    console.log(`静音播放也失败: ${e2}`);
-                    doResolve('play failed');
-                });
+                console.log(`播放失败: ${e.name} - ${e.message}`);
+                doResolve('play failed');
             });
         };
         
