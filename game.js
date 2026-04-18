@@ -144,40 +144,20 @@ function checkOrientation() {
     }
 }
 
-// 开场动画 - 不允许点击跳过，必须播完
+// 开场 - 直接显示选择界面
 window.addEventListener('load', async () => {
     // 检测屏幕方向
     checkOrientation();
     window.addEventListener('resize', checkOrientation);
     window.addEventListener('orientationchange', checkOrientation);
     
-    elements.introVideo.play().catch(() => {
-        // 如果自动播放失败，等待用户点击
-        elements.introScreen.addEventListener('click', () => {
-            elements.introVideo.play().catch(() => {});
-        }, { once: true });
-    });
+    // 后台开始预加载视频
+    preloadVideos();
     
-    // 必须等视频播完才显示选择界面
-    elements.introVideo.onended = async () => {
-        elements.introScreen.classList.add('hidden');
-        
-        // 显示加载界面
-        elements.loadingScreen.classList.add('show');
-        
-        // 如果还没加载完，等待加载完成
-        if (loadedCount < videoList.length) {
-            await preloadVideos();
-        }
-        
-        // 加载完成，显示选择界面
-        elements.loadingScreen.classList.remove('show');
-        elements.challengeScreen.classList.add('show');
-        startSelectCountdown();
-    };
-    
-    // 移除点击跳过功能
-    // 用户必须看完开场动画
+    // 直接显示选择界面
+    elements.introScreen.classList.add('hidden');
+    elements.challengeScreen.classList.add('show');
+    startSelectCountdown();
 });
 
 // 选择界面倒计时
@@ -204,9 +184,47 @@ function startSelectCountdown() {
         btn.addEventListener('click', () => {
             clearInterval(game.selectTimer);
             game.currentDifficulty = btn.dataset.difficulty;
-            startGame();
+            playTransitionAndStart();
         });
     });
+}
+
+// 播放过渡动画后开始游戏
+async function playTransitionAndStart() {
+    elements.challengeScreen.classList.remove('show');
+    elements.introScreen.classList.remove('hidden');
+    
+    // 播放开场动画
+    elements.introVideo.play().catch(() => {});
+    
+    // 等待视频播放完成或预加载完成（取较长时间）
+    await new Promise(resolve => {
+        const onEnded = () => {
+            elements.introVideo.removeEventListener('ended', onEnded);
+            resolve();
+        };
+        elements.introVideo.addEventListener('ended', onEnded);
+        
+        // 如果视频还没加载，最多等8秒
+        setTimeout(resolve, 8000);
+    });
+    
+    // 如果预加载还没完成，显示加载界面
+    if (loadedCount < videoList.length) {
+        elements.introScreen.classList.add('hidden');
+        elements.loadingScreen.classList.add('show');
+        await preloadVideos();
+        elements.loadingScreen.classList.remove('show');
+    } else {
+        elements.introScreen.classList.add('hidden');
+    }
+    
+    // 开始游戏
+    elements.gameContainer.classList.add('show');
+    resetGame();
+    updateHP();
+    playVideo('idle_loop', true);
+    generateQuestion();
 }
 
 // 超时提示
@@ -218,17 +236,6 @@ function showTimeout() {
             <button class="restart-btn" onclick="location.reload()">重新开始</button>
         </div>
     `;
-}
-
-// 开始游戏
-function startGame() {
-    elements.challengeScreen.classList.remove('show');
-    elements.gameContainer.classList.add('show');
-    
-    resetGame();
-    updateHP();
-    playVideo('idle_loop', true);
-    generateQuestion();
 }
 
 // 重置游戏状态
