@@ -75,8 +75,40 @@ const elements = {
 // 当前输入的答案
 let currentInput = '';
 
+// 所有视频列表
+const videoList = [
+    'videos/idle_loop.mp4',
+    'videos/cc_normal.mp4',
+    'videos/rr_normal.mp4',
+    'videos/cc_special1.mp4',
+    'videos/cc_special2.mp4',
+    'videos/rr_special1.mp4',
+    'videos/rr_special2.mp4',
+    'videos/cc_win.mp4',
+    'videos/rr_win.mp4',
+    'videos/draw.mp4'
+];
+
+// 预加载视频
+let loadedCount = 0;
+function preloadVideos() {
+    videoList.forEach(src => {
+        const video = document.createElement('video');
+        video.preload = 'auto';
+        video.src = src;
+        video.load();
+        video.oncanplaythrough = () => {
+            loadedCount++;
+            console.log(`预加载进度: ${loadedCount}/${videoList.length}`);
+        };
+    });
+}
+
 // 开场动画 - 不允许点击跳过，必须播完
 window.addEventListener('load', () => {
+    // 开始预加载所有视频
+    preloadVideos();
+    
     elements.introVideo.play().catch(() => {
         // 如果自动播放失败，等待用户点击
         elements.introScreen.addEventListener('click', () => {
@@ -171,8 +203,8 @@ function updateHP() {
     
     elements.playerHPBar.style.width = `${playerPercent}%`;
     elements.enemyHPBar.style.width = `${enemyPercent}%`;
-    elements.playerHP.textContent = `${game.playerHP}/${game.maxHP}`;
-    elements.enemyHP.textContent = `${game.enemyHP}/${game.maxHP}`;
+    elements.playerHP.textContent = game.playerHP;
+    elements.enemyHP.textContent = game.enemyHP;
 }
 
 // 生成题目
@@ -348,7 +380,7 @@ function showFeedback(type, text) {
 }
 
 // 玩家攻击（串串攻击爸爸）
-function playerAttack() {
+async function playerAttack() {
     let damage, videoName, isSpecial = false;
     
     // 判断是否触发必杀技
@@ -376,30 +408,25 @@ function playerAttack() {
     game.playerDamage += damage;
     updateHP();
     
-    playVideo(videoName, false);
+    // 播放视频并等待结束
+    await playVideoAndWait(videoName);
     
-    // 视频时长
-    const videoDuration = isSpecial ? 8500 : 4500;
-    
-    setTimeout(() => {
-        if (game.currentQuestion < game.totalQuestions) {
-            playVideo('idle_loop', true);
-            setTimeout(generateQuestion, 1000);
-        } else {
-            endGame();
-        }
-    }, videoDuration);
+    if (game.currentQuestion < game.totalQuestions) {
+        playVideo('idle_loop', true);
+        setTimeout(generateQuestion, 500);
+    } else {
+        endGame();
+    }
 }
 
 // AI攻击（爸爸攻击串串）
-function enemyAttack() {
-    let damage, videoName, isSpecial = false;
+async function enemyAttack() {
+    let damage, videoName;
     
     // 判断是否触发必杀技
     if (game.questionType !== 'simple') {
         damage = 10;
         videoName = Math.random() < 0.5 ? 'rr_special1' : 'rr_special2';
-        isSpecial = true;
     } else {
         damage = 5;
         videoName = 'rr_normal';
@@ -409,18 +436,15 @@ function enemyAttack() {
     game.enemyDamage += damage;
     updateHP();
     
-    playVideo(videoName, false);
+    // 播放视频并等待结束
+    await playVideoAndWait(videoName);
     
-    const videoDuration = isSpecial ? 8500 : 4500;
-    
-    setTimeout(() => {
-        if (game.currentQuestion < game.totalQuestions) {
-            playVideo('idle_loop', true);
-            setTimeout(generateQuestion, 1000);
-        } else {
-            endGame();
-        }
-    }, videoDuration);
+    if (game.currentQuestion < game.totalQuestions) {
+        playVideo('idle_loop', true);
+        setTimeout(generateQuestion, 500);
+    } else {
+        endGame();
+    }
 }
 
 // 播放视频
@@ -432,6 +456,24 @@ function playVideo(name, loop) {
     elements.gameVideo.play().catch(() => {
         elements.gameVideo.muted = true;
         elements.gameVideo.play().catch(() => {});
+    });
+}
+
+// 播放视频并等待结束
+function playVideoAndWait(name) {
+    return new Promise((resolve) => {
+        const onEnded = () => {
+            elements.gameVideo.removeEventListener('ended', onEnded);
+            resolve();
+        };
+        elements.gameVideo.addEventListener('ended', onEnded);
+        playVideo(name, false);
+        
+        // 超时保护（如果视频加载失败，最多等10秒）
+        setTimeout(() => {
+            elements.gameVideo.removeEventListener('ended', onEnded);
+            resolve();
+        }, 10000);
     });
 }
 

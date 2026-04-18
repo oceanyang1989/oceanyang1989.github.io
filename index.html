@@ -115,48 +115,49 @@
             border-right: 2px solid #333;
         }
         
-        /* 血条区 - 紧凑 */
+        /* 血条区 - 单行紧凑 */
         .hp-container {
             width: 100%;
-            margin-bottom: 10px;
-        }
-        
-        .hp-row {
-            display: flex;
-            align-items: center;
             margin-bottom: 8px;
         }
         
-        .hp-label {
-            width: 40px;
-            font-size: 12px;
+        .hp-single-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            margin-bottom: 3px;
+        }
+        
+        .hp-label-mini {
             font-weight: bold;
+            white-space: nowrap;
+            width: 28px;
         }
-        .hp-label.player { color: #44cc44; }
-        .hp-label.enemy { color: #ff4444; }
+        .hp-label-mini.player { color: #44cc44; }
+        .hp-label-mini.enemy { color: #ff4444; }
         
-        .hp-bar-bg {
+        .hp-bar-mini {
             flex: 1;
-            height: 16px;
+            height: 8px;
             background: rgba(255,255,255,0.1);
-            border-radius: 8px;
+            border-radius: 4px;
             overflow: hidden;
-            margin: 0 6px;
-            border: 1px solid #fff;
+            border: 1px solid rgba(255,255,255,0.3);
         }
         
-        .hp-bar {
+        .hp-fill {
             height: 100%;
-            background: linear-gradient(90deg, #e63946, #ff6b6b);
             transition: width 0.3s;
-            border-radius: 8px;
+            border-radius: 4px;
         }
-        .hp-bar.player { background: linear-gradient(90deg, #44cc44, #66ff66); }
+        .hp-fill.player { background: linear-gradient(90deg, #44cc44, #66ff66); }
+        .hp-fill.enemy { background: linear-gradient(90deg, #e63946, #ff6b6b); }
         
-        .hp-text {
-            width: 55px;
+        .hp-num {
+            min-width: 28px;
             text-align: right;
-            font-size: 11px;
+            font-size: 9px;
         }
         
         /* 题目区 - 紧凑 */
@@ -418,19 +419,19 @@
         <div id="quiz-area">
             <!-- 血条 -->
             <div class="hp-container">
-                <div class="hp-row">
-                    <span class="hp-label player">串串</span>
-                    <div class="hp-bar-bg">
-                        <div class="hp-bar player" id="player-hp-bar"></div>
+                <div class="hp-single-row">
+                    <span class="hp-label-mini player">串串</span>
+                    <div class="hp-bar-mini">
+                        <div class="hp-fill player" id="player-hp-bar"></div>
                     </div>
-                    <span class="hp-text" id="player-hp">200/200</span>
+                    <span class="hp-num" id="player-hp">200</span>
                 </div>
-                <div class="hp-row">
-                    <span class="hp-label enemy">爸爸</span>
-                    <div class="hp-bar-bg">
-                        <div class="hp-bar" id="enemy-hp-bar"></div>
+                <div class="hp-single-row">
+                    <span class="hp-label-mini enemy">爸爸</span>
+                    <div class="hp-bar-mini">
+                        <div class="hp-fill enemy" id="enemy-hp-bar"></div>
                     </div>
-                    <span class="hp-text" id="enemy-hp">200/200</span>
+                    <span class="hp-num" id="enemy-hp">200</span>
                 </div>
             </div>
             
