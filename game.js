@@ -275,32 +275,47 @@ async function playTransitionAndStart() {
     transitionVideoEl.src = transitionVideo;
     transitionVideoEl.muted = true;
     transitionVideoEl.load();
+    console.log('开始加载过渡视频');
     
     // 播放视频的Promise
     const videoPromise = new Promise(resolve => {
         let resolved = false;
-        const doResolve = () => {
+        const doResolve = (reason) => {
             if (resolved) return;
             resolved = true;
+            console.log(`过渡视频结束: ${reason}`);
             resolve();
         };
         
-        transitionVideoEl.onended = doResolve;
-        transitionVideoEl.onerror = doResolve;
+        transitionVideoEl.onended = () => doResolve('ended');
+        transitionVideoEl.onerror = (e) => {
+            console.log('过渡视频错误:', e);
+            doResolve('error');
+        };
         
         // 检查是否已经可以播放
+        const tryPlay = () => {
+            console.log(`过渡视频可以播放, readyState: ${transitionVideoEl.readyState}`);
+            transitionVideoEl.play().then(() => {
+                console.log('过渡视频开始播放');
+            }).catch((e) => {
+                console.log('过渡视频播放失败:', e);
+                doResolve('play failed');
+            });
+        };
+        
         if (transitionVideoEl.readyState >= 3) {
-            // 已经有足够数据，直接播放
-            transitionVideoEl.play().catch(doResolve);
+            console.log('过渡视频已缓存');
+            tryPlay();
         } else {
-            // 等待数据加载
             transitionVideoEl.oncanplay = () => {
-                transitionVideoEl.play().catch(doResolve);
+                console.log('过渡视频数据加载完成');
+                tryPlay();
             };
         }
         
-        // 最多等10秒
-        setTimeout(doResolve, 10000);
+        // 过渡视频8.2秒，给15秒超时
+        setTimeout(() => doResolve('timeout'), 15000);
     });
     
     // 更新加载进度
@@ -680,9 +695,14 @@ function playVideoAndWait(name) {
             elements.gameVideo.play().then(() => {
                 console.log(`视频开始播放: ${name}`);
             }).catch((e) => {
-                console.log(`播放失败，静音重试: ${e}`);
+                console.log(`播放失败(${e.name}): ${e.message}，静音重试`);
                 elements.gameVideo.muted = true;
-                elements.gameVideo.play().catch(() => doResolve('play failed'));
+                elements.gameVideo.play().then(() => {
+                    console.log(`静音播放成功: ${name}`);
+                }).catch((e2) => {
+                    console.log(`静音播放也失败: ${e2}`);
+                    doResolve('play failed');
+                });
             });
         };
         
@@ -698,8 +718,8 @@ function playVideoAndWait(name) {
             };
         }
         
-        // 超时保护
-        const timeout = name.includes('special') ? 12000 : 8000;
+        // 超时保护（必杀技最长12.2秒，给15秒；普通攻击5秒左右，给8秒）
+        const timeout = name.includes('special') ? 15000 : 10000;
         setTimeout(() => doResolve('timeout'), timeout);
     });
 }
