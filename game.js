@@ -775,8 +775,14 @@ function playVideoAndWait(name) {
 
 // 结束游戏
 async function endGame() {
+    // 防止重复调用
+    if (!game.isPlaying) {
+        console.log('游戏已结束，忽略重复调用');
+        return;
+    }
     game.isPlaying = false;
     clearInterval(game.countdownTimer);
+    clearInterval(game.selectTimer);
     
     // 判断胜负
     let result, videoName;
