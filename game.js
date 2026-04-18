@@ -102,27 +102,23 @@ let loadedCount = 0;
 let transitionLoaded = false;
 let preloadResolve = null;
 
+// 视频缓存（Blob URL）
+const videoCache = {};
+
 // 预加载过渡视频（优先）
-function preloadTransitionVideo() {
-    return new Promise((resolve) => {
-        const video = document.createElement('video');
-        video.preload = 'auto';
-        video.src = transitionVideo;
-        video.load();
-        
-        video.oncanplaythrough = () => {
-            transitionLoaded = true;
-            loadedCount++;
-            console.log('过渡视频加载完成');
-            resolve();
-        };
-        
-        video.onerror = () => {
-            transitionLoaded = true;
-            loadedCount++;
-            resolve();
-        };
-    });
+async function preloadTransitionVideo() {
+    try {
+        const response = await fetch(transitionVideo);
+        const blob = await response.blob();
+        videoCache[transitionVideo] = URL.createObjectURL(blob);
+        transitionLoaded = true;
+        loadedCount++;
+        console.log('过渡视频加载完成');
+    } catch (e) {
+        console.log('过渡视频加载失败:', e);
+        transitionLoaded = true;
+        loadedCount++;
+    }
 }
 
 // 预加载游戏视频（后台）
@@ -131,29 +127,28 @@ function preloadGameVideos() {
         preloadResolve = resolve;
         let gameLoadedCount = 0;
         
-        gameVideos.forEach(src => {
-            const video = document.createElement('video');
-            video.preload = 'auto';
-            video.src = src;
-            video.load();
-            
-            video.oncanplaythrough = () => {
+        gameVideos.forEach(async (src) => {
+            try {
+                const response = await fetch(src);
+                const blob = await response.blob();
+                videoCache[src] = URL.createObjectURL(blob);
                 gameLoadedCount++;
                 loadedCount++;
+                updateLoadingProgress();
                 if (gameLoadedCount >= gameVideos.length && preloadResolve) {
                     preloadResolve();
                     preloadResolve = null;
                 }
-            };
-            
-            video.onerror = () => {
+            } catch (e) {
+                console.log('视频加载失败:', src, e);
                 gameLoadedCount++;
                 loadedCount++;
+                updateLoadingProgress();
                 if (gameLoadedCount >= gameVideos.length && preloadResolve) {
                     preloadResolve();
                     preloadResolve = null;
                 }
-            };
+            }
         });
     });
 }
@@ -271,11 +266,12 @@ async function playTransitionAndStart() {
         });
     }
     
-    // 播放过渡视频
-    transitionVideoEl.src = transitionVideo;
+    // 播放过渡视频（使用缓存的Blob URL）
+    const transitionUrl = videoCache[transitionVideo] || transitionVideo;
+    transitionVideoEl.src = transitionUrl;
     transitionVideoEl.muted = true;
     transitionVideoEl.load();
-    console.log('开始加载过渡视频');
+    console.log('开始播放过渡视频:', transitionUrl.startsWith('blob:') ? '使用缓存' : '原始路径');
     
     // 播放视频的Promise
     const videoPromise = new Promise(resolve => {
@@ -682,10 +678,15 @@ function playVideoAndWait(name) {
             doResolve('error');
         };
         
-        // 设置视频源（默认静音，确保能播放）
-        elements.gameVideo.src = `videos/${name}.mp4`;
+        // 获取视频URL（优先用缓存的Blob URL）
+        const videoPath = `videos/${name}.mp4`;
+        const videoUrl = videoCache[videoPath] || videoPath;
+        console.log(`使用视频URL: ${videoUrl.startsWith('blob:') ? '缓存' : '原始'}`);
+        
+        // 设置视频源（先尝试有声音，失败再静音）
+        elements.gameVideo.src = videoUrl;
         elements.gameVideo.loop = false;
-        elements.gameVideo.muted = true;  // 静音播放，避免被浏览器阻止
+        elements.gameVideo.muted = false;  // 先尝试有声音
         elements.gameVideo.currentTime = 0;
         elements.gameVideo.load();
         
@@ -693,10 +694,17 @@ function playVideoAndWait(name) {
         const tryPlay = () => {
             console.log(`视频可以播放: ${name}, readyState: ${elements.gameVideo.readyState}`);
             elements.gameVideo.play().then(() => {
-                console.log(`视频开始播放: ${name}`);
+                console.log(`视频开始播放(有声): ${name}`);
             }).catch((e) => {
-                console.log(`播放失败: ${e.name} - ${e.message}`);
-                doResolve('play failed');
+                // 有声播放失败，尝试静音
+                console.log(`有声播放失败: ${e.name}，尝试静音播放`);
+                elements.gameVideo.muted = true;
+                elements.gameVideo.play().then(() => {
+                    console.log(`视频开始播放(静音): ${name}`);
+                }).catch((e2) => {
+                    console.log(`静音播放也失败: ${e2}`);
+                    doResolve('play failed');
+                });
             });
         };
         
