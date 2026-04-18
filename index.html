@@ -11,6 +11,7 @@
             font-family: 'Arial', sans-serif;
             overflow: hidden;
             color: #fff;
+            touch-action: manipulation;
         }
         
         /* 开场动画 */
@@ -20,18 +21,11 @@
             width: 100%; height: 100%;
             background: #000;
             z-index: 300;
-            cursor: pointer;
         }
         #intro-screen.hidden { display: none; }
         #intro-video {
             width: 100%; height: 100%;
             object-fit: cover;
-        }
-        .skip-hint {
-            position: absolute;
-            bottom: 30px; right: 40px;
-            color: rgba(255,255,255,0.6);
-            font-size: 16px;
         }
         
         /* 选择界面 */
@@ -49,58 +43,53 @@
         #challenge-screen.show { display: flex; }
         
         .challenge-title {
-            font-size: 48px;
+            font-size: 32px;
             color: #ffd700;
-            text-shadow: 4px 4px 0 #ff6b35;
-            margin-bottom: 40px;
+            text-shadow: 3px 3px 0 #ff6b35;
+            margin-bottom: 30px;
         }
         
         .difficulty-btns {
             display: flex;
-            gap: 30px;
-            margin-bottom: 40px;
+            gap: 15px;
+            margin-bottom: 30px;
         }
         
         .difficulty-btn {
-            padding: 20px 40px;
-            font-size: 24px;
+            padding: 15px 25px;
+            font-size: 18px;
             font-weight: bold;
-            border: 3px solid #ffd700;
-            border-radius: 15px;
-            background: rgba(0,0,0,0.5);
+            border: 2px solid #ffd700;
+            border-radius: 10px;
+            background: rgba(0,0,0,0.6);
             color: #fff;
             cursor: pointer;
-            transition: all 0.3s;
         }
-        .difficulty-btn:hover {
-            background: #ffd700;
-            color: #000;
-            transform: scale(1.1);
+        .difficulty-btn:active {
+            transform: scale(0.95);
         }
         .difficulty-btn.easy { border-color: #44cc44; }
-        .difficulty-btn.easy:hover { background: #44cc44; }
+        .difficulty-btn.easy:active { background: #44cc44; }
         .difficulty-btn.normal { border-color: #ff9933; }
-        .difficulty-btn.normal:hover { background: #ff9933; }
+        .difficulty-btn.normal:active { background: #ff9933; }
         .difficulty-btn.hard { border-color: #ff4444; }
-        .difficulty-btn.hard:hover { background: #ff4444; }
+        .difficulty-btn.hard:active { background: #ff4444; }
         
         #select-countdown {
-            font-size: 28px;
+            font-size: 20px;
             color: #fff;
         }
         #select-countdown.warning { color: #ff4444; animation: pulse 0.5s infinite; }
         
-        .timeout-message {
-            text-align: center;
-        }
-        .timeout-icon { font-size: 80px; margin-bottom: 20px; }
-        .timeout-text { font-size: 36px; margin-bottom: 30px; }
+        .timeout-message { text-align: center; }
+        .timeout-icon { font-size: 60px; margin-bottom: 15px; }
+        .timeout-text { font-size: 24px; margin-bottom: 20px; }
         .restart-btn {
-            padding: 15px 40px;
-            font-size: 20px;
+            padding: 12px 30px;
+            font-size: 18px;
             background: #ffd700;
             border: none;
-            border-radius: 10px;
+            border-radius: 8px;
             cursor: pointer;
         }
         
@@ -114,35 +103,33 @@
         }
         #game-container.show { display: flex; }
         
-        /* 左侧答题区 40% */
+        /* 左侧答题区 */
         #quiz-area {
-            width: 40%;
+            width: 35%;
             height: 100%;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.85);
             display: flex;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
-            padding: 30px;
+            padding: 15px 10px;
             border-right: 2px solid #333;
         }
         
-        /* 血条区 */
+        /* 血条区 - 紧凑 */
         .hp-container {
             width: 100%;
-            max-width: 400px;
-            margin-bottom: 40px;
+            margin-bottom: 10px;
         }
         
         .hp-row {
             display: flex;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
         }
         
         .hp-label {
-            width: 60px;
-            font-size: 18px;
+            width: 40px;
+            font-size: 12px;
             font-weight: bold;
         }
         .hp-label.player { color: #44cc44; }
@@ -150,110 +137,150 @@
         
         .hp-bar-bg {
             flex: 1;
-            height: 30px;
+            height: 16px;
             background: rgba(255,255,255,0.1);
-            border-radius: 15px;
+            border-radius: 8px;
             overflow: hidden;
-            margin: 0 10px;
-            border: 2px solid #fff;
+            margin: 0 6px;
+            border: 1px solid #fff;
         }
         
         .hp-bar {
             height: 100%;
             background: linear-gradient(90deg, #e63946, #ff6b6b);
             transition: width 0.3s;
-            border-radius: 15px;
+            border-radius: 8px;
         }
         .hp-bar.player { background: linear-gradient(90deg, #44cc44, #66ff66); }
         
         .hp-text {
-            width: 70px;
+            width: 55px;
             text-align: right;
-            font-size: 16px;
+            font-size: 11px;
         }
         
-        /* 题目区 */
+        /* 题目区 - 紧凑 */
         #question-progress {
-            font-size: 18px;
+            font-size: 12px;
             color: #aaa;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
         
         #question-type {
-            font-size: 20px;
-            margin-bottom: 15px;
+            font-size: 13px;
+            margin-bottom: 5px;
         }
         
         #countdown {
-            font-size: 60px;
+            font-size: 36px;
             font-weight: bold;
             color: #fff;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
         #countdown.warning { color: #ff4444; animation: pulse 0.5s infinite; }
         @keyframes pulse {
             0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.2); }
+            50% { transform: scale(1.15); }
         }
         
         #question {
-            font-size: 48px;
+            font-size: 28px;
             font-weight: bold;
-            margin-bottom: 30px;
+            margin-bottom: 10px;
         }
         
-        #answer-input {
-            width: 150px;
-            height: 60px;
-            font-size: 36px;
-            text-align: center;
-            border: 3px solid #ffd700;
-            border-radius: 15px;
-            background: rgba(255,255,255,0.9);
-            color: #333;
-            margin-bottom: 20px;
+        /* 答案显示框 */
+        #answer-display {
+            font-size: 32px;
+            font-weight: bold;
+            color: #ffd700;
+            min-height: 40px;
+            margin-bottom: 10px;
+            background: rgba(255,215,0,0.1);
+            padding: 5px 20px;
+            border-radius: 8px;
+            border: 2px solid #ffd700;
         }
-        #answer-input:focus { outline: none; border-color: #ff6b35; }
+        
+        /* 自定义数字键盘 */
+        #numpad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            width: 100%;
+            max-width: 200px;
+            margin-bottom: 10px;
+        }
+        
+        .numpad-btn {
+            padding: 12px;
+            font-size: 22px;
+            font-weight: bold;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid #555;
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+            user-select: none;
+        }
+        .numpad-btn:active {
+            background: rgba(255,255,255,0.3);
+            transform: scale(0.95);
+        }
+        .numpad-btn.clear {
+            background: rgba(255,68,68,0.3);
+            border-color: #ff4444;
+        }
+        .numpad-btn.submit {
+            background: rgba(68,204,68,0.3);
+            border-color: #44cc44;
+        }
         
         .btn-row {
             display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
+            gap: 8px;
         }
         
-        #submit-btn {
-            padding: 15px 40px;
-            font-size: 20px;
+        .action-btn {
+            padding: 8px 16px;
+            font-size: 14px;
             font-weight: bold;
-            background: linear-gradient(135deg, #ffd700, #ff6b35);
-            border: none;
-            border-radius: 25px;
-            color: #fff;
+            border: 2px solid;
+            border-radius: 8px;
+            background: transparent;
             cursor: pointer;
         }
-        #submit-btn:hover { transform: scale(1.05); }
-        
+        #submit-btn {
+            border-color: #44cc44;
+            color: #44cc44;
+        }
         #giveup-btn {
-            padding: 15px 25px;
-            font-size: 16px;
-            background: rgba(255,255,255,0.1);
-            border: 2px solid #888;
-            border-radius: 25px;
-            color: #888;
-            cursor: pointer;
+            border-color: #ff9933;
+            color: #ff9933;
         }
-        #giveup-btn:hover { border-color: #ff4444; color: #ff4444; }
+        .action-btn:active {
+            transform: scale(0.95);
+        }
         
         #feedback {
-            font-size: 24px;
-            min-height: 36px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 8px;
+            min-height: 20px;
         }
         .correct { color: #44cc44; }
         .wrong { color: #ff4444; }
         
-        /* 右侧视频区 60% */
+        /* 隐藏原始输入框 */
+        #answer-input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        /* 右侧视频区 */
         #video-area {
-            width: 60%;
+            width: 65%;
             height: 100%;
             position: relative;
         }
@@ -266,10 +293,10 @@
         
         .vs-label {
             position: absolute;
-            top: 20px;
+            top: 10px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 24px;
+            font-size: 16px;
             color: #ffd700;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
             z-index: 10;
@@ -277,24 +304,24 @@
         
         .player-labels {
             position: absolute;
-            bottom: 20px;
+            bottom: 15px;
             left: 0; right: 0;
             display: flex;
             justify-content: space-between;
-            padding: 0 50px;
+            padding: 0 30px;
             z-index: 10;
         }
         
         .char-label {
-            font-size: 20px;
+            font-size: 14px;
             font-weight: bold;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            background: rgba(0,0,0,0.5);
-            padding: 8px 20px;
-            border-radius: 20px;
+            background: rgba(0,0,0,0.6);
+            padding: 5px 12px;
+            border-radius: 15px;
         }
-        .char-label.player { color: #44cc44; }
-        .char-label.enemy { color: #ff4444; }
+        .char-label.enemy { color: #ff4444; }  /* 左边是爸爸 */
+        .char-label.player { color: #44cc44; } /* 右边是串串 */
         
         /* 结果界面 */
         #result-screen {
@@ -311,29 +338,59 @@
         #result-screen.show { display: flex; }
         
         #result-text {
-            font-size: 64px;
+            font-size: 42px;
             font-weight: bold;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
         
         #result-stats {
-            font-size: 24px;
+            font-size: 16px;
             text-align: center;
-            line-height: 2;
-            margin-bottom: 40px;
+            line-height: 1.8;
+            margin-bottom: 25px;
         }
         
         #restart-btn {
-            padding: 20px 60px;
-            font-size: 24px;
+            padding: 15px 40px;
+            font-size: 18px;
             background: linear-gradient(135deg, #ffd700, #ff6b35);
             border: none;
-            border-radius: 30px;
+            border-radius: 20px;
             color: #fff;
             font-weight: bold;
             cursor: pointer;
         }
-        #restart-btn:hover { transform: scale(1.1); }
+        
+        /* 响应式 - 手机横屏优化 */
+        @media (max-height: 500px) {
+            .challenge-title { font-size: 24px; margin-bottom: 15px; }
+            .difficulty-btn { padding: 10px 18px; font-size: 14px; }
+            #select-countdown { font-size: 16px; }
+            
+            #quiz-area { padding: 8px; }
+            .hp-container { margin-bottom: 5px; }
+            .hp-row { margin-bottom: 4px; }
+            .hp-label { font-size: 10px; width: 35px; }
+            .hp-bar-bg { height: 12px; }
+            .hp-text { font-size: 10px; width: 45px; }
+            
+            #question-progress { font-size: 10px; }
+            #question-type { font-size: 11px; }
+            #countdown { font-size: 28px; margin-bottom: 5px; }
+            #question { font-size: 22px; margin-bottom: 5px; }
+            #answer-display { font-size: 26px; min-height: 32px; padding: 3px 15px; }
+            
+            #numpad { gap: 4px; max-width: 160px; }
+            .numpad-btn { padding: 8px; font-size: 18px; }
+            
+            .btn-row { gap: 5px; }
+            .action-btn { padding: 6px 12px; font-size: 12px; }
+            #feedback { font-size: 12px; margin-top: 5px; }
+            
+            .vs-label { font-size: 12px; top: 5px; }
+            .player-labels { padding: 0 15px; bottom: 8px; }
+            .char-label { font-size: 11px; padding: 3px 8px; }
+        }
     </style>
 </head>
 <body>
@@ -380,17 +437,37 @@
             <!-- 题目 -->
             <div id="question-progress">第 1 / 16 题</div>
             <div id="question-type">✨ 简单题</div>
-            <div id="countdown">20</div>
+            <div id="countdown">30</div>
             <div id="question">25 + 37 = ?</div>
             
-            <input type="number" id="answer-input" inputmode="numeric" pattern="[0-9]*" placeholder="?" autofocus>
+            <!-- 答案显示 -->
+            <div id="answer-display">?</div>
+            
+            <!-- 数字键盘 -->
+            <div id="numpad">
+                <button class="numpad-btn" data-num="1">1</button>
+                <button class="numpad-btn" data-num="2">2</button>
+                <button class="numpad-btn" data-num="3">3</button>
+                <button class="numpad-btn" data-num="4">4</button>
+                <button class="numpad-btn" data-num="5">5</button>
+                <button class="numpad-btn" data-num="6">6</button>
+                <button class="numpad-btn" data-num="7">7</button>
+                <button class="numpad-btn" data-num="8">8</button>
+                <button class="numpad-btn" data-num="9">9</button>
+                <button class="numpad-btn clear" data-num="clear">C</button>
+                <button class="numpad-btn" data-num="0">0</button>
+                <button class="numpad-btn submit" data-num="submit">✓</button>
+            </div>
             
             <div class="btn-row">
-                <button id="submit-btn">确认</button>
-                <button id="giveup-btn">放弃</button>
+                <button class="action-btn" id="submit-btn">确认</button>
+                <button class="action-btn" id="giveup-btn">放弃</button>
             </div>
             
             <div id="feedback"></div>
+            
+            <!-- 隐藏的输入框 -->
+            <input type="number" id="answer-input" inputmode="numeric" pattern="[0-9]*">
         </div>
         
         <!-- 右侧视频区 -->
@@ -398,8 +475,8 @@
             <video id="game-video" playsinline></video>
             <div class="vs-label">⚔️ 肉串大战 ⚔️</div>
             <div class="player-labels">
-                <span class="char-label player">串串 (你)</span>
                 <span class="char-label enemy">爸爸 (AI)</span>
+                <span class="char-label player">串串 (你)</span>
             </div>
         </div>
     </div>

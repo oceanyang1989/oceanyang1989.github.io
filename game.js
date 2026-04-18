@@ -47,6 +47,8 @@ const elements = {
     countdown: document.getElementById('countdown'),
     question: document.getElementById('question'),
     answerInput: document.getElementById('answer-input'),
+    answerDisplay: document.getElementById('answer-display'),
+    numpadBtns: document.querySelectorAll('.numpad-btn'),
     submitBtn: document.getElementById('submit-btn'),
     giveUpBtn: document.getElementById('giveup-btn'),
     feedback: document.getElementById('feedback'),
@@ -69,6 +71,9 @@ const elements = {
     selectCountdown: document.getElementById('select-countdown'),
     difficultyBtns: document.querySelectorAll('.difficulty-btn')
 };
+
+// 当前输入的答案
+let currentInput = '';
 
 // 开场动画 - 不允许点击跳过，必须播完
 window.addEventListener('load', () => {
@@ -151,7 +156,9 @@ function resetGame() {
     game.wrongCount = 0;
     game.currentQuestion = 0;
     game.consecutiveCorrect = 0;  // 重置连续答对计数
+    game.lastSpecial = 2;  // 重置必杀技轮换
     game.isPlaying = true;
+    currentInput = '';  // 重置输入
     
     const config = game.difficultyConfig[game.currentDifficulty];
     game.totalQuestions = config.simple + config.medium + config.hard;
@@ -223,8 +230,9 @@ function generateQuestion() {
     
     game.currentAnswer = operator === '+' ? a + b : a - b;
     elements.question.textContent = `${a} ${operator} ${b} = ?`;
+    currentInput = '';  // 清空输入
+    elements.answerDisplay.textContent = '?';
     elements.answerInput.value = '';
-    elements.answerInput.focus();
     elements.feedback.textContent = '';
     
     startCountdown();
@@ -278,6 +286,27 @@ function handleTimeout() {
     setTimeout(() => enemyAttack(), 500);
 }
 
+// 数字键盘事件
+elements.numpadBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        const num = btn.dataset.num;
+        
+        if (num === 'clear') {
+            currentInput = '';
+        } else if (num === 'submit') {
+            checkAnswer();
+            return;
+        } else {
+            // 限制输入长度
+            if (currentInput.length < 4) {
+                currentInput += num;
+            }
+        }
+        
+        elements.answerDisplay.textContent = currentInput || '?';
+    });
+});
+
 // 提交答案
 elements.submitBtn.addEventListener('click', checkAnswer);
 elements.answerInput.addEventListener('keypress', (e) => {
@@ -285,8 +314,8 @@ elements.answerInput.addEventListener('keypress', (e) => {
 });
 
 function checkAnswer() {
-    const userAnswer = parseInt(elements.answerInput.value);
-    if (isNaN(userAnswer)) return;
+    const userAnswer = parseInt(currentInput);
+    if (isNaN(userAnswer) || currentInput === '') return;
     
     clearInterval(game.countdownTimer);
     
