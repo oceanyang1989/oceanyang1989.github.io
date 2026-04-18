@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="screen-orientation" content="landscape">
+    <meta name="x5-orientation" content="landscape">
     <title>肉串大战 - 算术格斗</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -12,6 +14,33 @@
             overflow: hidden;
             color: #fff;
             touch-action: manipulation;
+        }
+        
+        /* 横屏提示 */
+        #rotate-hint {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #0a0a1a;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+        }
+        #rotate-hint.show { display: flex; }
+        .rotate-icon {
+            font-size: 80px;
+            animation: rotate-phone 1.5s ease-in-out infinite;
+        }
+        @keyframes rotate-phone {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(90deg); }
+        }
+        .rotate-text {
+            font-size: 20px;
+            color: #ffd700;
+            margin-top: 20px;
         }
         
         /* 开场动画 */
@@ -41,6 +70,43 @@
             z-index: 200;
         }
         #challenge-screen.show { display: flex; }
+        
+        /* 加载界面 */
+        #loading-screen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #0a0a1a;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 250;
+        }
+        #loading-screen.show { display: flex; }
+        .loading-text {
+            font-size: 24px;
+            color: #ffd700;
+            margin-bottom: 20px;
+        }
+        .loading-bar {
+            width: 200px;
+            height: 10px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .loading-progress {
+            height: 100%;
+            background: #ffd700;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .loading-percent {
+            font-size: 16px;
+            color: #aaa;
+            margin-top: 10px;
+        }
         
         .challenge-title {
             font-size: 32px;
@@ -395,11 +461,26 @@
     </style>
 </head>
 <body>
+    <!-- 横屏提示 -->
+    <div id="rotate-hint">
+        <div class="rotate-icon">📱</div>
+        <div class="rotate-text">请横屏游玩</div>
+    </div>
+    
     <!-- 开场动画 -->
     <div id="intro-screen">
         <video id="intro-video" playsinline>
             <source src="intro_10s.mp4" type="video/mp4">
         </video>
+    </div>
+    
+    <!-- 加载界面 -->
+    <div id="loading-screen">
+        <div class="loading-text">⚔️ 肉串大战 ⚔️</div>
+        <div class="loading-bar">
+            <div class="loading-progress" id="loading-progress"></div>
+        </div>
+        <div class="loading-percent" id="loading-percent">加载中... 0%</div>
     </div>
     
     <!-- 选择界面 -->

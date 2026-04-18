@@ -37,9 +37,13 @@ const game = {
 const elements = {
     introScreen: document.getElementById('intro-screen'),
     introVideo: document.getElementById('intro-video'),
+    loadingScreen: document.getElementById('loading-screen'),
+    loadingProgress: document.getElementById('loading-progress'),
+    loadingPercent: document.getElementById('loading-percent'),
     challengeScreen: document.getElementById('challenge-screen'),
     gameContainer: document.getElementById('game-container'),
     resultScreen: document.getElementById('result-screen'),
+    rotateHint: document.getElementById('rotate-hint'),
     
     // 答题区
     questionProgress: document.getElementById('question-progress'),
@@ -91,23 +95,61 @@ const videoList = [
 
 // 预加载视频
 let loadedCount = 0;
+let preloadResolve = null;
+
 function preloadVideos() {
-    videoList.forEach(src => {
-        const video = document.createElement('video');
-        video.preload = 'auto';
-        video.src = src;
-        video.load();
-        video.oncanplaythrough = () => {
-            loadedCount++;
-            console.log(`预加载进度: ${loadedCount}/${videoList.length}`);
-        };
+    return new Promise((resolve) => {
+        preloadResolve = resolve;
+        
+        videoList.forEach(src => {
+            const video = document.createElement('video');
+            video.preload = 'auto';
+            video.src = src;
+            video.load();
+            
+            video.oncanplaythrough = () => {
+                loadedCount++;
+                updateLoadingProgress();
+                if (loadedCount >= videoList.length && preloadResolve) {
+                    preloadResolve();
+                    preloadResolve = null;
+                }
+            };
+            
+            video.onerror = () => {
+                loadedCount++;
+                updateLoadingProgress();
+                if (loadedCount >= videoList.length && preloadResolve) {
+                    preloadResolve();
+                    preloadResolve = null;
+                }
+            };
+        });
     });
 }
 
+function updateLoadingProgress() {
+    const percent = Math.round((loadedCount / videoList.length) * 100);
+    elements.loadingProgress.style.width = `${percent}%`;
+    elements.loadingPercent.textContent = `加载中... ${percent}%`;
+}
+
+// 横屏检测
+function checkOrientation() {
+    const isLandscape = window.innerWidth > window.innerHeight;
+    if (isLandscape) {
+        elements.rotateHint.classList.remove('show');
+    } else {
+        elements.rotateHint.classList.add('show');
+    }
+}
+
 // 开场动画 - 不允许点击跳过，必须播完
-window.addEventListener('load', () => {
-    // 开始预加载所有视频
-    preloadVideos();
+window.addEventListener('load', async () => {
+    // 检测屏幕方向
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
     
     elements.introVideo.play().catch(() => {
         // 如果自动播放失败，等待用户点击
@@ -117,8 +159,19 @@ window.addEventListener('load', () => {
     });
     
     // 必须等视频播完才显示选择界面
-    elements.introVideo.onended = () => {
+    elements.introVideo.onended = async () => {
         elements.introScreen.classList.add('hidden');
+        
+        // 显示加载界面
+        elements.loadingScreen.classList.add('show');
+        
+        // 如果还没加载完，等待加载完成
+        if (loadedCount < videoList.length) {
+            await preloadVideos();
+        }
+        
+        // 加载完成，显示选择界面
+        elements.loadingScreen.classList.remove('show');
         elements.challengeScreen.classList.add('show');
         startSelectCountdown();
     };
