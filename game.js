@@ -102,23 +102,43 @@ let loadedCount = 0;
 let transitionLoaded = false;
 let preloadResolve = null;
 
-// 视频缓存（Blob URL）
-const videoCache = {};
+// 视频缓存状态
+const videoLoaded = {};
 
 // 预加载过渡视频（优先）
-async function preloadTransitionVideo() {
-    try {
-        const response = await fetch(transitionVideo);
-        const blob = await response.blob();
-        videoCache[transitionVideo] = URL.createObjectURL(blob);
-        transitionLoaded = true;
-        loadedCount++;
-        console.log('过渡视频加载完成');
-    } catch (e) {
-        console.log('过渡视频加载失败:', e);
-        transitionLoaded = true;
-        loadedCount++;
-    }
+function preloadTransitionVideo() {
+    console.log('开始预加载过渡视频:', transitionVideo);
+    return new Promise((resolve) => {
+        const video = document.createElement('video');
+        video.preload = 'auto';
+        video.src = transitionVideo;
+        video.load();
+        
+        video.oncanplaythrough = () => {
+            videoLoaded[transitionVideo] = true;
+            transitionLoaded = true;
+            loadedCount++;
+            console.log('过渡视频预加载完成');
+            resolve();
+        };
+        
+        video.onerror = (e) => {
+            console.log('过渡视频预加载失败:', e);
+            transitionLoaded = true;
+            loadedCount++;
+            resolve();
+        };
+        
+        // 超时保护
+        setTimeout(() => {
+            if (!transitionLoaded) {
+                console.log('过渡视频预加载超时');
+                transitionLoaded = true;
+                loadedCount++;
+                resolve();
+            }
+        }, 10000);
+    });
 }
 
 // 预加载游戏视频（后台）
@@ -127,11 +147,14 @@ function preloadGameVideos() {
         preloadResolve = resolve;
         let gameLoadedCount = 0;
         
-        gameVideos.forEach(async (src) => {
-            try {
-                const response = await fetch(src);
-                const blob = await response.blob();
-                videoCache[src] = URL.createObjectURL(blob);
+        gameVideos.forEach(src => {
+            const video = document.createElement('video');
+            video.preload = 'auto';
+            video.src = src;
+            video.load();
+            
+            video.oncanplaythrough = () => {
+                videoLoaded[src] = true;
                 gameLoadedCount++;
                 loadedCount++;
                 updateLoadingProgress();
@@ -139,8 +162,10 @@ function preloadGameVideos() {
                     preloadResolve();
                     preloadResolve = null;
                 }
-            } catch (e) {
-                console.log('视频加载失败:', src, e);
+            };
+            
+            video.onerror = () => {
+                console.log('视频预加载失败:', src);
                 gameLoadedCount++;
                 loadedCount++;
                 updateLoadingProgress();
@@ -148,8 +173,17 @@ function preloadGameVideos() {
                     preloadResolve();
                     preloadResolve = null;
                 }
-            }
+            };
         });
+        
+        // 超时保护：最多等30秒
+        setTimeout(() => {
+            if (preloadResolve) {
+                console.log('视频预加载超时，继续游戏');
+                preloadResolve();
+                preloadResolve = null;
+            }
+        }, 30000);
     });
 }
 
@@ -266,12 +300,11 @@ async function playTransitionAndStart() {
         });
     }
     
-    // 播放过渡视频（使用缓存的Blob URL）
-    const transitionUrl = videoCache[transitionVideo] || transitionVideo;
-    transitionVideoEl.src = transitionUrl;
+    // 播放过渡视频
+    transitionVideoEl.src = transitionVideo;
     transitionVideoEl.muted = true;
     transitionVideoEl.load();
-    console.log('开始播放过渡视频:', transitionUrl.startsWith('blob:') ? '使用缓存' : '原始路径');
+    console.log('开始播放过渡视频');
     
     // 播放视频的Promise
     const videoPromise = new Promise(resolve => {
@@ -596,6 +629,12 @@ async function playerAttack() {
     // 播放视频并等待结束
     await playVideoAndWait(videoName);
     
+    // 检查是否有人血量为0
+    if (game.enemyHP <= 0 || game.playerHP <= 0) {
+        endGame();
+        return;
+    }
+    
     if (game.currentQuestion < game.totalQuestions) {
         playVideo('idle_loop', true);
         setTimeout(generateQuestion, 500);
@@ -631,6 +670,12 @@ async function enemyAttack() {
     
     // 播放视频并等待结束
     await playVideoAndWait(videoName);
+    
+    // 检查是否有人血量为0
+    if (game.enemyHP <= 0 || game.playerHP <= 0) {
+        endGame();
+        return;
+    }
     
     if (game.currentQuestion < game.totalQuestions) {
         playVideo('idle_loop', true);
@@ -678,13 +723,8 @@ function playVideoAndWait(name) {
             doResolve('error');
         };
         
-        // 获取视频URL（优先用缓存的Blob URL）
-        const videoPath = `videos/${name}.mp4`;
-        const videoUrl = videoCache[videoPath] || videoPath;
-        console.log(`使用视频URL: ${videoUrl.startsWith('blob:') ? '缓存' : '原始'}`);
-        
-        // 设置视频源（先尝试有声音，失败再静音）
-        elements.gameVideo.src = videoUrl;
+        // 设置视频源
+        elements.gameVideo.src = `videos/${name}.mp4`;
         elements.gameVideo.loop = false;
         elements.gameVideo.muted = false;  // 先尝试有声音
         elements.gameVideo.currentTime = 0;
